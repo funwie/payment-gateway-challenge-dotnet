@@ -1,17 +1,49 @@
-using PaymentGateway.Api.Services;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 
-var builder = WebApplication.CreateBuilder(args);
+using PaymentGateway.Api;
+using PaymentGateway.Api.Clients;
+using PaymentGateway.Api.Services;
+using PaymentGateway.Api.Storage;
+using PaymentGateway.Api.Validation;
+
+using Polly;
+using Polly.Extensions.Http;
+
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddNewtonsoftJson(opts =>
+{
+    opts.SerializerSettings.Converters.Add(new StringEnumConverter());
+    opts.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+    opts.SerializerSettings.ContractResolver = new DefaultContractResolver
+    {
+        NamingStrategy = new SnakeCaseNamingStrategy()
+    };
+});
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGenNewtonsoftSupport();
 
-builder.Services.AddSingleton<PaymentsRepository>();
+Settings settings = new();
+builder.Configuration.Bind(settings);
+//Create singleton from instance
+builder.Services.AddSingleton(settings);
 
-var app = builder.Build();
+builder.Services.AddHttpClient<IAcquirerClient, AcquirerClient>(client => 
+    {
+        client.BaseAddress = settings.Acquirer.BaseUrl;
+    }).AddPolicyHandler(GetRetryPolicy());
+
+builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
+builder.Services.AddSingleton<IPaymentRequestValidator, PaymentRequestValidator>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+
+WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -27,3 +59,14 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+}
+
+public partial class Program
+{
+}
