@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.HttpLogging;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
@@ -14,7 +16,6 @@ using Polly.Extensions.Http;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers().AddNewtonsoftJson(opts =>
 {
     opts.SerializerSettings.Converters.Add(new StringEnumConverter());
@@ -23,6 +24,12 @@ builder.Services.AddControllers().AddNewtonsoftJson(opts =>
     {
         NamingStrategy = new SnakeCaseNamingStrategy()
     };
+});
+builder.Services.AddHttpLogging(logging =>
+{
+    logging.CombineLogs = true;
+    logging.LoggingFields = HttpLoggingFields.RequestMethod | HttpLoggingFields.RequestPath |
+                            HttpLoggingFields.RequestQuery | HttpLoggingFields.ResponseStatusCode | HttpLoggingFields.Duration;
 });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -57,6 +64,8 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.UseHttpLogging();
 
 app.Run();
 

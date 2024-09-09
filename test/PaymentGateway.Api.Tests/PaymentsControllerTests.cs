@@ -90,7 +90,7 @@ public class PaymentsControllerTests(WebApplicationFactory<Program> factory)
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(paymentResponse);
-        Assert.Equal(paymentResponse.Status, PaymentStatus.Authorized);
+        Assert.Equal(PaymentStatus.Authorized, paymentResponse.Status);
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class PaymentsControllerTests(WebApplicationFactory<Program> factory)
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(paymentResponse);
-        Assert.Equal(paymentResponse.Status, PaymentStatus.Declined);
+        Assert.Equal(PaymentStatus.Declined, paymentResponse.Status);
     }
 
     private HttpRequestMessage BuildPostRequest(PaymentRequest paymentRequest)
@@ -145,6 +145,7 @@ public class PaymentsControllerTests(WebApplicationFactory<Program> factory)
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(payments);
         Assert.NotEmpty(payments);
         Assert.True(payments.Length >= 2);
     }
